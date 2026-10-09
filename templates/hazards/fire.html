@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+
+{% block title %}Fires{% endblock %}
+{% block page_title %}Forest fire danger & weather{% endblock %}
+
+{% block content %}
+<div style="display: flex; flex-direction: column; gap: 24px;">
+
+  <!-- Station Selector Bar -->
+  <div class="card" style="padding: 14px 20px;">
+    <form method="GET" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+      <label class="form-label" style="margin: 0; font-size: 13.5px;">Monitored forest / reserve:</label>
+      <select name="location" class="form-select" style="max-width: 300px;" onchange="this.form.submit()">
+        {% for loc in locations %}
+        <option value="{{ loc.location_name }}" {% if selected_loc == loc.location_name %}selected{% endif %}>
+          {{ loc.location_name }}
+        </option>
+        {% endfor %}
+      </select>
+      <a href="/map/" class="btn btn-secondary btn-sm" style="margin-left: auto;">View on map →</a>
+    </form>
+  </div>
+
+  <!-- Primary Model Output & Real-time Sensor KPIs -->
+  <div class="grid-2">
+    
+    <!-- Real-time Evaluation Card -->
+    <div class="prediction-box {% if prediction.risk_level == 'CRITICAL' %}critical{% elif prediction.risk_level == 'HIGH' %}high{% elif prediction.risk_level == 'MEDIUM' %}warning{% else %}safe{% endif %}">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+          <div style="font-size: 13px; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">
+            Current condition
+          </div>
+          <h2 style="font-size: 22px; margin-top: 4px;">{{ selected_loc }}</h2>
+        </div>
+        <span class="badge {% if prediction.risk_level == 'CRITICAL' %}badge-critical{% elif prediction.risk_level == 'HIGH' %}badge-high{% elif prediction.risk_level == 'MEDIUM' %}badge-warning{% else %}badge-safe{% endif %}">
+          {% if prediction.risk_level == 'CRITICAL' %}Act now (Critical)
+          {% elif prediction.risk_level == 'HIGH' %}Take precautions (High)
+          {% elif prediction.risk_level == 'MEDIUM' %}Keep an eye on it (Medium)
+          {% else %}All clear (Low){% endif %}
+        </span>
+      </div>
+
+      <div style="display: flex; align-items: baseline; gap: 14px; margin: 10px 0;">
+        <div class="pred-probability-num {% if prediction.risk_level == 'CRITICAL' %}critical{% elif prediction.risk_level == 'HIGH' %}high{% elif prediction.risk_level == 'MEDIUM' %}warning{% else %}safe{% endif %}">
+          {{ prediction.probability }}%
+        </div>
+        <div style="color: var(--text-secondary); font-size: 15px; font-weight: 600;">Fire outbreak danger likelihood</div>
+      </div>
+
+      <div style="background: var(--bg-surface); padding: 14px; border-radius: var(--radius-xs); font-size: 13.5px; line-height: 1.6; color: var(--text-primary);">
+        <strong>Fire weather assessment:</strong> {{ prediction.explanation }}
+      </div>
+
+      <div style="font-size: 12px; color: var(--text-muted); margin-top: auto;">
+        Continuous weather telemetry sync active
+      </div>
+    </div>
+
+    <!-- Active Physical Readings -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h3 class="card-title">Live weather & fuel telemetry</h3>
+          <p style="font-size: 13px; color: var(--text-muted);">Current physical station telemetry</p>
+        </div>
+      </div>
+
+      <div class="grid-2" style="gap: 12px;">
+        <div class="metric-card">
+          <div class="metric-info">
+            <span class="metric-label">Ambient temperature</span>
+            <span class="metric-value" {% if temperature >= 35.0 %}style="color: var(--risk-red);"{% endif %}>
+              {{ temperature }}°C
+            </span>
+            <span class="metric-sub">Surface thermal load</span>
+          </div>
+          <div class="metric-icon-wrap icon-amber">🌡️</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-info">
+            <span class="metric-label">Relative humidity</span>
+            <span class="metric-value" {% if humidity <= 30.0 %}style="color: var(--risk-red);"{% endif %}>
+              {{ humidity }}%
+            </span>
+            <span class="metric-sub">Dryness threshold: &lt;35%</span>
+          </div>
+          <div class="metric-icon-wrap icon-sky">💧</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-info">
+            <span class="metric-label">Wind speed</span>
+            <span class="metric-value">{{ wind_speed }} km/h</span>
+            <span class="metric-sub">Spread propagation speed</span>
+          </div>
+          <div class="metric-icon-wrap icon-indigo">💨</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-info">
+            <span class="metric-label">Vegetation dryness</span>
+            <span class="metric-value" {% if smoke_level >= 80.0 %}style="color: var(--risk-red);"{% endif %}>
+              {{ smoke_level }}
+            </span>
+            <span class="metric-sub">Fuel dryness code (0-100)</span>
+          </div>
+          <div class="metric-icon-wrap icon-rose">🌾</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Interactive What-If Simulation Form -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">Simulate fire weather conditions</h3>
+        <p style="font-size: 13px; color: var(--text-muted);">Test what-if heatwave, wind speed, and fuel dryness values</p>
+      </div>
+    </div>
+
+    <form method="POST">
+      {% csrf_token %}
+      <input type="hidden" name="location" value="{{ selected_loc }}">
+      <div class="grid-4">
+        <div class="form-group">
+          <label class="form-label" for="temperature">Temperature (°C)</label>
+          <input type="number" step="0.5" id="temperature" name="temperature" class="form-control" value="{{ temperature }}" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="humidity">Humidity (%)</label>
+          <input type="number" step="1" id="humidity" name="humidity" class="form-control" value="{{ humidity }}" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="wind_speed">Wind speed (km/h)</label>
+          <input type="number" step="0.5" id="wind_speed" name="wind_speed" class="form-control" value="{{ wind_speed }}" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="rainfall">Rainfall (mm)</label>
+          <input type="number" step="0.1" id="rainfall" name="rainfall" class="form-control" value="{{ rainfall }}" required>
+        </div>
+      </div>
+      <div class="form-group" style="max-width: 380px;">
+        <label class="form-label" for="smoke_level">Vegetation dryness index (0 to 100)</label>
+        <input type="number" step="0.5" id="smoke_level" name="smoke_level" class="form-control" value="{{ smoke_level }}" required>
+      </div>
+
+      <button type="submit" class="btn btn-primary">Simulate fire danger →</button>
+    </form>
+  </div>
+
+</div>
+{% endblock %}

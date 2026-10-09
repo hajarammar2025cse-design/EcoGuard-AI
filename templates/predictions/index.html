@@ -1,0 +1,264 @@
+{% extends 'base.html' %}
+
+{% block title %}Check a risk{% endblock %}
+{% block page_title %}Check environmental risk{% endblock %}
+
+{% block content %}
+<div style="display: flex; flex-direction: column; gap: 24px;">
+
+  <!-- Risk Assessment Form Card -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">Select hazard and environmental conditions</h3>
+        <p style="font-size: 13px; color: var(--text-muted);">Enter observation values to evaluate potential hazard urgency</p>
+      </div>
+    </div>
+
+    <form method="POST" id="predictionForm">
+      {% csrf_token %}
+
+      <div class="grid-2" style="margin-bottom: 20px;">
+        <!-- Hazard Type Selector -->
+        <div class="form-group">
+          <label class="form-label" for="hazard_type">Hazard to check</label>
+          <select id="hazard_type" name="hazard_type" class="form-select" onchange="switchHazardInputs(this.value)">
+            <option value="FLOOD" {% if selected_hazard == 'FLOOD' %}selected{% endif %}>🌊 River & flood risk</option>
+            <option value="FOREST_FIRE" {% if selected_hazard == 'FOREST_FIRE' %}selected{% endif %}>🔥 Forest fire danger</option>
+            <option value="POLLUTION" {% if selected_hazard == 'POLLUTION' %}selected{% endif %}>🌫️ Air quality & smog</option>
+          </select>
+        </div>
+
+        <!-- Target Location Selector -->
+        <div class="form-group">
+          <label class="form-label" for="location">Target area / station</label>
+          <select id="location" name="location" class="form-select" required>
+            {% for loc in locations %}
+            <option value="{{ loc.location_name }}" {% if selected_location == loc.location_name %}selected{% endif %}>
+              {{ loc.location_name }} ({{ loc.district_city }})
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <!-- DYNAMIC INPUT FIELDS FOR FLOOD -->
+      <div id="flood-fields" class="hazard-input-group" {% if selected_hazard != 'FLOOD' %}style="display:none;"{% endif %}>
+        <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 10px;">
+          Water & rainfall conditions
+        </div>
+        <div class="grid-4">
+          <div class="form-group">
+            <label class="form-label" for="flood_rainfall">Rainfall (mm)</label>
+            <input type="number" step="0.1" id="flood_rainfall" name="rainfall" class="form-control" value="85.0">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="flood_water_level">Water level (m)</label>
+            <input type="number" step="0.1" id="flood_water_level" name="water_level" class="form-control" value="6.8">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="flood_temp">Temperature (°C)</label>
+            <input type="number" step="0.1" id="flood_temp" name="temperature" class="form-control" value="28.0">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="flood_humidity">Humidity (%)</label>
+            <input type="number" step="1" id="flood_humidity" name="humidity" class="form-control" value="82">
+          </div>
+        </div>
+      </div>
+
+      <!-- DYNAMIC INPUT FIELDS FOR FOREST FIRE -->
+      <div id="fire-fields" class="hazard-input-group" {% if selected_hazard != 'FOREST_FIRE' %}style="display:none;"{% endif %}>
+        <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 10px;">
+          Weather & fuel dryness conditions
+        </div>
+        <div class="grid-3">
+          <div class="form-group">
+            <label class="form-label" for="fire_temp">Temperature (°C)</label>
+            <input type="number" step="0.1" id="fire_temp" name="temperature" class="form-control" value="36.5">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="fire_humidity">Relative humidity (%)</label>
+            <input type="number" step="1" id="fire_humidity" name="humidity" class="form-control" value="28">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="fire_wind">Wind speed (km/h)</label>
+            <input type="number" step="0.1" id="fire_wind" name="wind_speed" class="form-control" value="21.0">
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label" for="fire_rain">Rainfall (mm)</label>
+            <input type="number" step="0.1" id="fire_rain" name="rainfall" class="form-control" value="0.0">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="fire_smoke">Vegetation dryness index (0-100)</label>
+            <input type="number" step="0.1" id="fire_smoke" name="smoke_level" class="form-control" value="88.5">
+          </div>
+        </div>
+      </div>
+
+      <!-- DYNAMIC INPUT FIELDS FOR AIR POLLUTION -->
+      <div id="pollution-fields" class="hazard-input-group" {% if selected_hazard != 'POLLUTION' %}style="display:none;"{% endif %}>
+        <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 10px;">
+          Air particulate and gas readings
+        </div>
+        <div class="grid-3">
+          <div class="form-group">
+            <label class="form-label" for="pol_pm25">PM2.5 (µg/m³)</label>
+            <input type="number" step="0.1" id="pol_pm25" name="pm25" class="form-control" value="125.0">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="pol_pm10">PM10 (µg/m³)</label>
+            <input type="number" step="0.1" id="pol_pm10" name="pm10" class="form-control" value="210.0">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="pol_co">CO (mg/m³)</label>
+            <input type="number" step="0.01" id="pol_co" name="co" class="form-control" value="2.4">
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label" for="pol_no2">NO2 (µg/m³)</label>
+            <input type="number" step="0.1" id="pol_no2" name="no2" class="form-control" value="68.0">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="pol_so2">SO2 (µg/m³)</label>
+            <input type="number" step="0.1" id="pol_so2" name="so2" class="form-control" value="48.0">
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 20px;">
+        <button type="submit" class="btn btn-primary" style="padding: 10px 24px;">
+          Calculate risk level →
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Real-time Risk Assessment Result -->
+  {% if prediction_result %}
+  <div class="prediction-box {% if prediction_result.risk_level == 'CRITICAL' %}critical{% elif prediction_result.risk_level == 'HIGH' %}high{% elif prediction_result.risk_level == 'MEDIUM' %}warning{% else %}safe{% endif %}">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
+      <div>
+        <div style="font-size: 13px; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">
+          Evaluation result
+        </div>
+        <h2 style="font-size: 24px; margin-top: 4px;">
+          {{ prediction_result.location }} • {% if prediction_result.hazard_type == 'FLOOD' %}Flood watch{% elif prediction_result.hazard_type == 'FOREST_FIRE' %}Fire weather{% else %}Air quality{% endif %}
+        </h2>
+      </div>
+
+      <span class="badge {% if prediction_result.risk_level == 'CRITICAL' %}badge-critical{% elif prediction_result.risk_level == 'HIGH' %}badge-high{% elif prediction_result.risk_level == 'MEDIUM' %}badge-warning{% else %}badge-safe{% endif %}" style="font-size: 14px; padding: 6px 14px;">
+        {% if prediction_result.risk_level == 'CRITICAL' %}Act now (Critical)
+        {% elif prediction_result.risk_level == 'HIGH' %}Take precautions (High)
+        {% elif prediction_result.risk_level == 'MEDIUM' %}Keep an eye on it (Medium)
+        {% else %}All clear (Low){% endif %}
+      </span>
+    </div>
+
+    <div style="display: flex; align-items: baseline; gap: 16px; margin: 10px 0;">
+      {% if prediction_result.hazard_type == 'POLLUTION' %}
+        <div class="pred-probability-num {% if prediction_result.risk_level == 'CRITICAL' %}critical{% elif prediction_result.risk_level == 'HIGH' %}high{% elif prediction_result.risk_level == 'MEDIUM' %}warning{% else %}safe{% endif %}">
+          AQI {{ prediction_result.prediction }}
+        </div>
+        <div style="color: var(--text-secondary); font-size: 15px;">Calculated air quality score</div>
+      {% else %}
+        <div class="pred-probability-num {% if prediction_result.risk_level == 'CRITICAL' %}critical{% elif prediction_result.risk_level == 'HIGH' %}high{% elif prediction_result.risk_level == 'MEDIUM' %}warning{% else %}safe{% endif %}">
+          {{ prediction_result.probability }}%
+        </div>
+        <div style="color: var(--text-secondary); font-size: 15px;">Hazard likelihood percentage</div>
+      {% endif %}
+    </div>
+
+    <div style="background: var(--bg-surface); padding: 16px; border-radius: var(--radius-xs); font-size: 14px; line-height: 1.6; color: var(--text-primary);">
+      <div style="font-weight: 700; margin-bottom: 4px;">Advisory note:</div>
+      <div>{{ prediction_result.explanation }}</div>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); margin-top: 4px; flex-wrap: wrap;">
+      <span>Parameters: {{ prediction_result.input_parameters }}</span>
+      <span>Calculated: {{ prediction_result.timestamp }}</span>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Recent Risk Checks History Table -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">Recent risk check history</h3>
+        <p style="font-size: 13px; color: var(--text-muted);">Audit log of manual and automated evaluations</p>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Hazard</th>
+            <th>Area</th>
+            <th>Reading value</th>
+            <th>Likelihood</th>
+            <th>Risk level</th>
+            <th>Recorded time</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in recent_predictions %}
+          <tr>
+            <td>
+              <strong>
+                {% if p.hazard_type == 'FLOOD' %}🌊 Flood
+                {% elif p.hazard_type == 'FOREST_FIRE' %}🔥 Fire
+                {% elif p.hazard_type == 'POLLUTION' %}🌫️ Air quality
+                {% else %}{{ p.hazard_type }}{% endif %}
+              </strong>
+            </td>
+            <td><strong>{{ p.location }}</strong></td>
+            <td>{{ p.prediction }}</td>
+            <td><strong>{{ p.probability }}%</strong></td>
+            <td>
+              <span class="badge {% if p.risk_level == 'CRITICAL' %}badge-critical{% elif p.risk_level == 'HIGH' %}badge-high{% elif p.risk_level == 'MEDIUM' %}badge-warning{% else %}badge-safe{% endif %}">
+                {% if p.risk_level == 'CRITICAL' %}Act now
+                {% elif p.risk_level == 'HIGH' %}Take precautions
+                {% elif p.risk_level == 'MEDIUM' %}Keep an eye on it
+                {% else %}All clear{% endif %}
+              </span>
+            </td>
+            <td style="font-size: 12px; color: var(--text-muted);">{{ p.timestamp|slice:":19" }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6">
+              <div class="empty-state">
+                <div class="empty-state-icon">🔍</div>
+                <div class="empty-state-title">No risk checks logged yet</div>
+                <div class="empty-state-text">Submit values above to generate a new risk evaluation.</div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function switchHazardInputs(hazardType) {
+    document.querySelectorAll('.hazard-input-group').forEach(el => el.style.display = 'none');
+    if (hazardType === 'FLOOD') {
+      document.getElementById('flood-fields').style.display = 'block';
+    } else if (hazardType === 'FOREST_FIRE') {
+      document.getElementById('fire-fields').style.display = 'block';
+    } else if (hazardType === 'POLLUTION') {
+      document.getElementById('pollution-fields').style.display = 'block';
+    }
+  }
+</script>
+{% endblock %}

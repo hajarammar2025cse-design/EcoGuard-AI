@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+
+{% block title %}Sensor data{% endblock %}
+{% block page_title %}Sensor readings log{% endblock %}
+
+{% block topbar_actions %}
+  {% if is_admin %}
+  <a href="/monitoring/add/" class="btn btn-primary btn-sm">
+    <span>➕</span> Add reading
+  </a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; flex-direction: column; gap: 20px;">
+
+  <!-- Search & Filter Bar -->
+  <div class="card" style="padding: 16px 20px;">
+    <form method="GET" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;">
+      
+      <!-- Search Input -->
+      <div style="flex: 2; min-width: 180px;">
+        <label class="form-label" style="font-size: 12px;">Search area</label>
+        <input type="text" name="search" class="form-control" placeholder="Search station name..." value="{{ search_query }}">
+      </div>
+
+      <!-- Location Filter -->
+      <div style="flex: 1.5; min-width: 150px;">
+        <label class="form-label" style="font-size: 12px;">Station</label>
+        <select name="location" class="form-select">
+          <option value="ALL">All stations</option>
+          {% for loc in locations %}
+          <option value="{{ loc.location_name }}" {% if location_filter == loc.location_name %}selected{% endif %}>
+            {{ loc.location_name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Hazard Focus Filter -->
+      <div style="flex: 1; min-width: 140px;">
+        <label class="form-label" style="font-size: 12px;">Condition</label>
+        <select name="hazard" class="form-select">
+          <option value="ALL" {% if hazard_filter == 'ALL' %}selected{% endif %}>All readings</option>
+          <option value="FLOOD" {% if hazard_filter == 'FLOOD' %}selected{% endif %}>High runoff / flood</option>
+          <option value="FIRE" {% if hazard_filter == 'FIRE' %}selected{% endif %}>Fire weather</option>
+          <option value="POLLUTION" {% if hazard_filter == 'POLLUTION' %}selected{% endif %}>Elevated AQI</option>
+        </select>
+      </div>
+
+      <!-- Start Date -->
+      <div style="flex: 1; min-width: 130px;">
+        <label class="form-label" style="font-size: 12px;">From</label>
+        <input type="date" name="start_date" class="form-control" value="{{ start_date }}">
+      </div>
+
+      <!-- End Date -->
+      <div style="flex: 1; min-width: 130px;">
+        <label class="form-label" style="font-size: 12px;">To</label>
+        <input type="date" name="end_date" class="form-control" value="{{ end_date }}">
+      </div>
+
+      <!-- Submit Filter -->
+      <div style="display: flex; gap: 8px;">
+        <button type="submit" class="btn btn-primary" style="height: 38px;">Filter</button>
+        <a href="/monitoring/" class="btn btn-secondary" style="height: 38px;">Reset</a>
+      </div>
+    </form>
+  </div>
+
+  <!-- Telemetry Records Table -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">Recorded readings ({{ total_count }})</h3>
+        <p style="font-size: 13px; color: var(--text-muted);">Timestamped physical observations</p>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Station area</th>
+            <th>Temp</th>
+            <th>Humidity</th>
+            <th>Rainfall</th>
+            <th>Water level</th>
+            <th>Wind</th>
+            <th>PM2.5</th>
+            <th>PM10</th>
+            <th>AQI</th>
+            <th>Last sync</th>
+            <th>Type</th>
+            {% if is_admin %}<th style="text-align: right;">Actions</th>{% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in page_obj %}
+          <tr>
+            <td>
+              <strong style="color: var(--text-primary);">{{ r.location }}</strong>
+            </td>
+            <td>{{ r.temperature }}°C</td>
+            <td>{{ r.humidity }}%</td>
+            <td>
+              <span {% if r.rainfall >= 60 %}style="color: var(--sky-blue); font-weight: 700;"{% endif %}>
+                {{ r.rainfall }} mm
+              </span>
+            </td>
+            <td>
+              <span {% if r.water_level >= 6.0 %}style="color: var(--risk-red); font-weight: 700;"{% endif %}>
+                {{ r.water_level }} m
+              </span>
+            </td>
+            <td>{{ r.wind_speed }} km/h</td>
+            <td>{{ r.pm25 }}</td>
+            <td>{{ r.pm10 }}</td>
+            <td>
+              <span class="badge {% if r.aqi > 200 %}badge-critical{% elif r.aqi > 100 %}badge-high{% elif r.aqi > 50 %}badge-warning{% else %}badge-safe{% endif %}">
+                {{ r.aqi }}
+              </span>
+            </td>
+            <td style="font-size: 12px; color: var(--text-muted);">{{ r.timestamp|slice:":16" }}</td>
+            <td>
+              {% if r.is_demo %}
+                <span class="badge badge-demo">Sample</span>
+              {% else %}
+                <span class="badge badge-live">Live</span>
+              {% endif %}
+            </td>
+            {% if is_admin %}
+            <td style="text-align: right;">
+              <div style="display: inline-flex; gap: 6px;">
+                <a href="/monitoring/{{ r.id }}/edit/" class="btn btn-secondary btn-sm" title="Edit reading">Edit</a>
+                <form method="POST" action="/monitoring/{{ r.id }}/delete/" onsubmit="return confirm('Delete this sensor reading?');">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-danger btn-sm" title="Delete reading">Delete</button>
+                </form>
+              </div>
+            </td>
+            {% endif %}
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="{% if is_admin %}12{% else %}11{% endif %}">
+              <div class="empty-state">
+                <div class="empty-state-icon">📡</div>
+                <div class="empty-state-title">No sensor readings found</div>
+                <div class="empty-state-text">No records matched your search criteria.</div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination Controls -->
+    {% if page_obj.has_other_pages %}
+    <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid var(--border-subtle); margin-top: 10px;">
+      <span style="font-size: 13px; color: var(--text-muted);">
+        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+      </span>
+
+      <div style="display: flex; gap: 8px;">
+        {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}&search={{ search_query }}&location={{ location_filter }}&hazard={{ hazard_filter }}&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-secondary btn-sm">
+          ← Previous
+        </a>
+        {% endif %}
+
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}&search={{ search_query }}&location={{ location_filter }}&hazard={{ hazard_filter }}&start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-secondary btn-sm">
+          Next →
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+
+</div>
+{% endblock %}

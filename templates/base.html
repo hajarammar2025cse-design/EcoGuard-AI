@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Environmental Monitoring{% endblock %} | Environmental Safety Network</title>
+  <meta name="description" content="Real-time environmental monitoring for flood levels, forest fire weather and air quality.">
+  
+  <!-- Google Fonts Preconnect -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  
+  <!-- Core Design System -->
+  <link rel="stylesheet" href="/static/css/style.css">
+  
+  <!-- Leaflet CSS for GIS Mapping -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<div class="app-container">
+  <!-- Persistent Deep Spruce Sidebar -->
+  <aside class="app-sidebar" id="appSidebar" aria-label="Main Navigation">
+    <div class="sidebar-brand">
+      <div class="brand-icon">🌱</div>
+      <div>
+        <div class="brand-title">Eco-Sentinel</div>
+        <div class="brand-subtitle">Environmental safety</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">Monitoring</div>
+      <a href="/dashboard/" class="nav-item {% if request.path == '/dashboard/' %}active{% endif %}">
+        <span class="nav-icon">📊</span>
+        <span>Overview</span>
+      </a>
+      <a href="/map/" class="nav-item {% if request.path == '/map/' %}active{% endif %}">
+        <span class="nav-icon">🗺️</span>
+        <span>Map</span>
+      </a>
+      <a href="/alerts/" class="nav-item {% if '/alerts/' in request.path %}active{% endif %}">
+        <span class="nav-icon">⚠️</span>
+        <span>Warnings</span>
+      </a>
+
+      <div class="nav-section-title">Hazard domains</div>
+      <a href="/hazards/flood/" class="nav-item {% if '/hazards/flood/' in request.path %}active{% endif %}">
+        <span class="nav-icon">🌊</span>
+        <span>Floods</span>
+      </a>
+      <a href="/hazards/fire/" class="nav-item {% if '/hazards/fire/' in request.path %}active{% endif %}">
+        <span class="nav-icon">🔥</span>
+        <span>Fires</span>
+      </a>
+      <a href="/hazards/pollution/" class="nav-item {% if '/hazards/pollution/' in request.path %}active{% endif %}">
+        <span class="nav-icon">🌫️</span>
+        <span>Air quality</span>
+      </a>
+      <a href="/predictions/" class="nav-item {% if request.path == '/predictions/' %}active{% endif %}">
+        <span class="nav-icon">🔍</span>
+        <span>Check a risk</span>
+      </a>
+
+      <div class="nav-section-title">Insights</div>
+      <a href="/analytics/" class="nav-item {% if request.path == '/analytics/' %}active{% endif %}">
+        <span class="nav-icon">📈</span>
+        <span>Trends</span>
+      </a>
+      <a href="/reports/" class="nav-item {% if '/reports/' in request.path %}active{% endif %}">
+        <span class="nav-icon">📑</span>
+        <span>Reports</span>
+      </a>
+
+      {% if is_admin %}
+      <div class="nav-section-title">Administration</div>
+      <a href="/monitoring/" class="nav-item {% if '/monitoring/' in request.path and '/add/' not in request.path %}active{% endif %}">
+        <span class="nav-icon">📡</span>
+        <span>All sensor data</span>
+      </a>
+      <a href="/locations/" class="nav-item {% if '/locations/' in request.path %}active{% endif %}">
+        <span class="nav-icon">📍</span>
+        <span>Sensor stations</span>
+      </a>
+      <a href="/monitoring/add/" class="nav-item {% if '/monitoring/add/' in request.path %}active{% endif %}">
+        <span class="nav-icon">➕</span>
+        <span>Add reading</span>
+      </a>
+      <a href="/accounts/users/" class="nav-item {% if '/accounts/users/' in request.path %}active{% endif %}">
+        <span class="nav-icon">👥</span>
+        <span>User accounts</span>
+      </a>
+      <a href="/hazards/ml-performance/" class="nav-item {% if '/ml-performance/' in request.path %}active{% endif %}">
+        <span class="nav-icon">🎯</span>
+        <span>Model verification</span>
+      </a>
+      {% endif %}
+
+      <div class="nav-section-title">Account</div>
+      <a href="/accounts/profile/" class="nav-item {% if '/accounts/profile/' in request.path %}active{% endif %}">
+        <span class="nav-icon">⚙️</span>
+        <span>Profile & settings</span>
+      </a>
+      <a href="/accounts/logout/" class="nav-item" style="color: var(--risk-red-text);">
+        <span class="nav-icon">🚪</span>
+        <span>Log out</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-snippet">
+        <div class="user-avatar">{{ current_user.username|slice:":1"|upper }}</div>
+        <div class="user-info">
+          <div class="user-name">{{ current_user.username|title }}</div>
+          <div class="user-role-badge">{% if is_admin %}Administrator{% else %}Field officer{% endif %}</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content Viewport -->
+  <main class="app-main">
+    <header class="app-topbar">
+      <div class="topbar-left">
+        <button class="mobile-toggle" id="sidebarToggle" aria-label="Toggle Navigation" aria-expanded="false">☰</button>
+        <h1 class="page-title">{% block page_title %}Overview{% endblock %}</h1>
+      </div>
+      <div class="topbar-right">
+        <div class="live-indicator-pill">
+          <span class="status-dot"></span>
+          <span>Live network active</span>
+        </div>
+        {% block topbar_actions %}{% endblock %}
+      </div>
+    </header>
+
+    <div class="app-content">
+      <!-- Flash Messages -->
+      {% if messages %}
+      <div class="messages-container" role="status">
+        {% for message in messages %}
+        <div class="alert-toast {{ message.tags }}">
+          <span>{{ message }}</span>
+          <button class="toast-close" style="background:none; border:none; cursor:pointer; font-size:18px; line-height:1; color:inherit; padding:0 4px;" aria-label="Dismiss message">&times;</button>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+</div>
+
+<!-- Shared Script -->
+<script src="/static/js/main.js"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

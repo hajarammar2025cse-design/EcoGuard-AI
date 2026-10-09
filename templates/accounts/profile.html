@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block title %}Profile & settings{% endblock %}
+{% block page_title %}Profile & account settings{% endblock %}
+
+{% block content %}
+<div style="max-width: 860px; display: flex; flex-direction: column; gap: 24px;">
+
+  <!-- Profile Card -->
+  <div class="card">
+    <div style="display: flex; align-items: center; gap: 18px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 18px; margin-bottom: 18px;">
+      <div class="user-avatar" style="width: 56px; height: 56px; font-size: 22px;">
+        {{ user.username|slice:":1"|upper }}
+      </div>
+      <div>
+        <h2 style="font-size: 20px;">{{ user.username|title }}</h2>
+        <div style="display: flex; gap: 10px; align-items: center; margin-top: 4px;">
+          <span class="badge badge-safe">
+            {% if user.role == 'ADMIN' %}Administrator{% else %}Field officer{% endif %}
+          </span>
+          <span style="font-size: 13px; color: var(--text-muted);">Joined: {{ user.created_at|default:"Active" }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contact Info Form -->
+    <h3 style="font-size: 15px; margin-bottom: 14px;">Contact details</h3>
+    <form method="POST">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="update_info">
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">Username</label>
+          <input type="text" class="form-control" value="{{ user.username }}" disabled style="background: var(--bg-surface); opacity: 0.8;">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="email">Email address</label>
+          <input type="email" id="email" name="email" class="form-control" value="{{ user.email }}" required>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm">Update email</button>
+    </form>
+  </div>
+
+  <!-- Change Password Card -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">Change password</h3>
+        <p style="font-size: 13px; color: var(--text-muted);">Update your account password</p>
+      </div>
+    </div>
+    <form method="POST">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="change_password">
+      
+      <div class="form-group">
+        <label class="form-label" for="old_password">Current password</label>
+        <div class="password-toggle-wrap">
+          <input type="password" id="old_password" name="old_password" class="form-control" required>
+          <button type="button" class="password-toggle-btn" aria-label="Show password">👁️</button>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label" for="new_password">New password</label>
+          <div class="password-toggle-wrap">
+            <input type="password" id="new_password" name="new_password" class="form-control" placeholder="At least 6 characters" required>
+            <button type="button" class="password-toggle-btn" aria-label="Show password">👁️</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="confirm_new_password">Confirm new password</label>
+          <div class="password-toggle-wrap">
+            <input type="password" id="confirm_new_password" name="confirm_new_password" class="form-control" placeholder="Repeat new password" required>
+            <button type="button" class="password-toggle-btn" aria-label="Show password">👁️</button>
+          </div>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-secondary">Update password</button>
+    </form>
+  </div>
+
+</div>
+{% endblock %}

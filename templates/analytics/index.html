@@ -1,0 +1,233 @@
+{% extends 'base.html' %}
+
+{% block title %}Trends{% endblock %}
+{% block page_title %}Environmental trends & analytics{% endblock %}
+
+{% block content %}
+<div style="display: flex; flex-direction: column; gap: 24px;">
+
+  <!-- Analytics Filter Controls -->
+  <div class="card" style="padding: 14px 20px;">
+    <form method="GET" style="display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap;">
+      <div style="flex: 2; min-width: 200px;">
+        <label class="form-label" style="font-size: 12px;">Monitored station</label>
+        <select id="analyticsLoc" name="location" class="form-select">
+          <option value="ALL">All stations combined</option>
+          {% for loc in locations %}
+          <option value="{{ loc.location_name }}" {% if selected_location == loc.location_name %}selected{% endif %}>
+            {{ loc.location_name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="flex: 1; min-width: 140px;">
+        <label class="form-label" style="font-size: 12px;">Time window</label>
+        <select id="analyticsRange" name="range" class="form-select">
+          <option value="7d" {% if selected_range == '7d' %}selected{% endif %}>Last 7 days</option>
+          <option value="30d" {% if selected_range == '30d' %}selected{% endif %}>Last 30 days</option>
+          <option value="90d" {% if selected_range == '90d' %}selected{% endif %}>Last 90 days</option>
+        </select>
+      </div>
+
+      <div>
+        <button type="submit" class="btn btn-primary" style="height: 38px;">Apply filter</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Row 1: Meteorological Trends -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">Weather & moisture trends</h3>
+        <p style="font-size: 13px; color: var(--text-muted);">Temperature (°C), Humidity (%), Rainfall (mm), Wind (km/h)</p>
+      </div>
+    </div>
+    <div style="height: 300px; position: relative;">
+      <canvas id="analyticsMetChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Row 2: Pollution Trends -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">Air quality & chemical pollutant concentrations</h3>
+        <p style="font-size: 13px; color: var(--text-muted);">PM2.5, PM10, CO, NO2, and SO2 against calculated AQI</p>
+      </div>
+    </div>
+    <div style="height: 300px; position: relative;">
+      <canvas id="analyticsPolChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Row 3: Hazards & Risk Distribution -->
+  <div class="grid-2">
+    <!-- Hazard Distribution -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h3 class="card-title">Warning event breakdown</h3>
+          <p style="font-size: 13px; color: var(--text-muted);">Distribution by hazard type</p>
+        </div>
+      </div>
+      <div style="height: 250px; position: relative;">
+        <canvas id="analyticsHazardChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Risk Level Proportions -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h3 class="card-title">Risk level proportion</h3>
+          <p style="font-size: 13px; color: var(--text-muted);">All clear, Warning, High, Critical</p>
+        </div>
+      </div>
+      <div style="height: 250px; position: relative;">
+        <canvas id="analyticsRiskChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const loc = document.getElementById('analyticsLoc').value;
+    const range = document.getElementById('analyticsRange').value;
+
+    fetch(`/analytics/api/data/?location=${encodeURIComponent(loc)}&range=${encodeURIComponent(range)}`)
+      .then(res => res.json())
+      .then(data => {
+        const labels = data.labels;
+
+        // 1. Meteorological Trends
+        new Chart(document.getElementById('analyticsMetChart'), {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: 'Temperature (°C)',
+                data: data.meteorological.temperature,
+                borderColor: '#2e9e6b',
+                tension: 0.3
+              },
+              {
+                label: 'Humidity (%)',
+                data: data.meteorological.humidity,
+                borderColor: '#1d7bb8',
+                tension: 0.3
+              },
+              {
+                label: 'Rainfall (mm)',
+                data: data.meteorological.rainfall,
+                borderColor: '#4fa7e4',
+                backgroundColor: 'rgba(79, 167, 228, 0.2)',
+                type: 'bar'
+              },
+              {
+                label: 'Wind speed (km/h)',
+                data: data.meteorological.wind_speed,
+                borderColor: '#8b5cf6',
+                borderDash: [4, 4],
+                tension: 0.3
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true } }
+          }
+        });
+
+        // 2. Pollution Trends
+        new Chart(document.getElementById('analyticsPolChart'), {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: 'Air Quality Index (AQI)',
+                data: data.pollution.aqi,
+                borderColor: '#c8243b',
+                borderWidth: 2.5,
+                tension: 0.3
+              },
+              {
+                label: 'PM2.5 (µg/m³)',
+                data: data.pollution.pm25,
+                borderColor: '#e8691e',
+                tension: 0.3
+              },
+              {
+                label: 'PM10 (µg/m³)',
+                data: data.pollution.pm10,
+                borderColor: '#d9a000',
+                tension: 0.3
+              },
+              {
+                label: 'NO2 (µg/m³)',
+                data: data.pollution.no2,
+                borderColor: '#0b6fa8',
+                tension: 0.3
+              },
+              {
+                label: 'SO2 (µg/m³)',
+                data: data.pollution.so2,
+                borderColor: '#6b8278',
+                tension: 0.3
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true } }
+          }
+        });
+
+        // 3. Hazard Incident Donut
+        new Chart(document.getElementById('analyticsHazardChart'), {
+          type: 'doughnut',
+          data: {
+            labels: ['Floods', 'Forest fires', 'Air quality & smog'],
+            datasets: [{
+              data: data.hazard_counts,
+              backgroundColor: ['#1d7bb8', '#e8691e', '#c8243b']
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom' } }
+          }
+        });
+
+        // 4. Risk Proportions
+        new Chart(document.getElementById('analyticsRiskChart'), {
+          type: 'pie',
+          data: {
+            labels: ['All clear', 'Keep an eye on it', 'Take precautions', 'Act now'],
+            datasets: [{
+              data: data.risk_counts,
+              backgroundColor: ['#2e9e6b', '#d9a000', '#e8691e', '#c8243b']
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom' } }
+          }
+        });
+
+      })
+      .catch(err => console.error("Error loading trends data:", err));
+  });
+</script>
+{% endblock %}

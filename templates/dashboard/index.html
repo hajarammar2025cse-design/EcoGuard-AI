@@ -1,0 +1,570 @@
+{% extends 'base.html' %}
+
+{% block title %}Overview{% endblock %}
+{% block page_title %}Overview{% endblock %}
+
+{% block topbar_actions %}
+  {% if is_admin %}
+  <a href="/monitoring/add/" class="btn btn-primary btn-sm">
+    <span>➕</span> Add reading
+  </a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; flex-direction: column; gap: 24px;">
+
+  <!-- 1. The Memorable Status Hero Banner -->
+  <section 
+    id="statusHero" 
+    class="status-hero {% if active_alerts > 0 or high_risk_locations > 0 %}{% if active_alerts >= 2 or flood_risk_count > 0 %}critical{% else %}warning{% endif %}{% else %}safe{% endif %}"
+    aria-label="Current environmental condition summary"
+  >
+    <div class="status-hero-header">
+      <div>
+        <h2 class="status-hero-sentence" id="statusHeroSentence">
+          {% if active_alerts > 0 %}
+            {{ active_alerts }} {% if active_alerts == 1 %}area needs{% else %}areas need{% endif %} your immediate attention
+          {% elif high_risk_locations > 0 %}
+            {{ high_risk_locations }} {% if high_risk_locations == 1 %}area needs{% else %}areas need{% endif %} your attention
+          {% else %}
+            All clear across your monitored areas
+          {% endif %}
+        </h2>
+        <p class="status-hero-sub" id="statusHeroSub">
+          {% if active_alerts > 0 %}
+            Active warnings logged across river basins and forest zones. Review the priority cards below.
+          {% elif high_risk_locations > 0 %}
+            Elevated runoff or air index detected in some stations. No critical emergencies currently active.
+          {% else %}
+            River levels, forest conditions, and air quality are within normal ranges.
+          {% endif %}
+        </p>
+      </div>
+
+      <div class="status-hero-meta">
+        <span class="status-refresh-tag" id="lastUpdatedTag">
+          <span>●</span>
+          <span id="updateTimeText">Updated just now</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Small Split Bar Showing Low / Medium / High / Critical Areas -->
+    <div>
+      <div class="risk-split-bar" id="riskSplitBar" aria-label="Risk distribution breakdown">
+        <div class="risk-split-segment safe" style="width: 60%;" id="segSafe" title="All clear"></div>
+        <div class="risk-split-segment warning" style="width: 20%;" id="segWarning" title="Keep an eye on it"></div>
+        <div class="risk-split-segment high" style="width: 10%;" id="segHigh" title="Take precautions"></div>
+        <div class="risk-split-segment critical" style="width: 10%;" id="segCritical" title="Act now"></div>
+      </div>
+      
+      <div class="risk-split-labels" style="margin-top: 8px;">
+        <span class="risk-split-item">
+          <span class="risk-dot-mini" style="background: var(--risk-green);"></span>
+          <span id="labelSafe">All clear</span>
+        </span>
+        <span class="risk-split-item">
+          <span class="risk-dot-mini" style="background: var(--risk-amber);"></span>
+          <span id="labelWarning">Keep an eye on it</span>
+        </span>
+        <span class="risk-split-item">
+          <span class="risk-dot-mini" style="background: var(--risk-orange);"></span>
+          <span id="labelHigh">Take precautions</span>
+        </span>
+        <span class="risk-split-item">
+          <span class="risk-dot-mini" style="background: var(--risk-red);"></span>
+          <span id="labelCritical">Act now</span>
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Priority Area Cards Filter & Grid -->
+  <section aria-labelledby="monitoredAreasTitle">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 12px;">
+      <div>
+        <h3 id="monitoredAreasTitle" style="font-size: 17px; font-weight: 700;">Monitored areas</h3>
+        <p style="font-size: 13px; color: var(--text-muted);">Sorted by urgency (areas requiring attention first)</p>
+      </div>
+
+      <!-- Filter Chips -->
+      <div class="filter-chips-bar" role="group" aria-label="Filter areas by hazard domain">
+        <button class="filter-chip active" data-filter="ALL" onclick="filterAreas('ALL', this)">All</button>
+        <button class="filter-chip" data-filter="FLOOD" onclick="filterAreas('FLOOD', this)">Floods</button>
+        <button class="filter-chip" data-filter="FIRE" onclick="filterAreas('FIRE', this)">Fires</button>
+        <button class="filter-chip" data-filter="AIR" onclick="filterAreas('AIR', this)">Air quality</button>
+      </div>
+    </div>
+
+    <!-- Area Cards Grid (Populated dynamically & sorted by urgency) -->
+    <div class="grid-3" id="areaCardsContainer">
+      <!-- Loading Skeleton / Fallback -->
+      <div class="card" style="padding: 24px; text-align: center; color: var(--text-muted); grid-column: 1 / -1;">
+        Loading live station telemetry...
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. Key Environmental Trends (Charts) -->
+  <section>
+    <div class="grid-2">
+      <!-- Meteorological Trends -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title">Weather and rainfall trends</h3>
+            <p style="font-size: 13px; color: var(--text-muted);">Temperature and precipitation across stations</p>
+          </div>
+        </div>
+        <div style="height: 260px; position: relative;">
+          <canvas id="metTrendChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Air Quality Trend -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title">Air quality trend</h3>
+            <p style="font-size: 13px; color: var(--text-muted);">Recent air quality readings</p>
+          </div>
+        </div>
+        <div style="height: 260px; position: relative;">
+          <canvas id="aqiTrendChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. Recent Warnings & Risk Checks (Simplified, Human Language) -->
+  <section>
+    <div class="grid-2">
+      
+      <!-- Recent Warnings -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title">Recent warnings</h3>
+            <p style="font-size: 13px; color: var(--text-muted);">Latest emergency advisories</p>
+          </div>
+          <a href="/alerts/" class="btn btn-secondary btn-sm">View all warnings</a>
+        </div>
+        
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Area</th>
+                <th>Hazard</th>
+                <th>Status</th>
+                <th>Urgency</th>
+                <th>Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for a in recent_alerts %}
+              <tr>
+                <td><strong>{{ a.location }}</strong></td>
+                <td>
+                  {% if a.alert_type == 'FLOOD' %}Water surge
+                  {% elif a.alert_type == 'FOREST_FIRE' %}Fire weather
+                  {% elif a.alert_type == 'AIR_POLLUTION' %}Smog & air
+                  {% else %}{{ a.alert_type }}{% endif %}
+                </td>
+                <td>
+                  <span class="badge {% if a.status == 'ACTIVE' %}badge-active{% elif a.status == 'ACKNOWLEDGED' %}badge-acknowledged{% else %}badge-resolved{% endif %}">
+                    {% if a.status == 'ACTIVE' %}Active
+                    {% elif a.status == 'ACKNOWLEDGED' %}Acknowledged
+                    {% else %}Resolved{% endif %}
+                  </span>
+                </td>
+                <td>
+                  <span class="badge {% if a.severity == 'CRITICAL' %}badge-critical{% elif a.severity == 'HIGH' %}badge-high{% elif a.severity == 'MEDIUM' %}badge-warning{% else %}badge-safe{% endif %}">
+                    {% if a.severity == 'CRITICAL' %}Act now
+                    {% elif a.severity == 'HIGH' %}Take precautions
+                    {% elif a.severity == 'MEDIUM' %}Keep an eye on it
+                    {% else %}All clear{% endif %}
+                  </span>
+                </td>
+                <td style="font-size: 12px; color: var(--text-muted);">{{ a.timestamp|slice:":16" }}</td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="5">
+                  <div class="empty-state">
+                    <div class="empty-state-icon">✅</div>
+                    <div class="empty-state-title">No active warnings</div>
+                    <div class="empty-state-text">All environmental conditions are within safe thresholds.</div>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Recent Risk Evaluations -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title">Recent risk checks</h3>
+            <p style="font-size: 13px; color: var(--text-muted);">Calculated conditions across sites</p>
+          </div>
+          <a href="/predictions/" class="btn btn-secondary btn-sm">Check a risk</a>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Area</th>
+                <th>Check type</th>
+                <th>Calculated risk</th>
+                <th>Status</th>
+                <th>Recorded</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in recent_predictions %}
+              <tr>
+                <td><strong>{{ p.location }}</strong></td>
+                <td>
+                  {% if p.hazard_type == 'FLOOD' %}Flood level
+                  {% elif p.hazard_type == 'FOREST_FIRE' %}Wildfire risk
+                  {% elif p.hazard_type == 'POLLUTION' %}Air quality
+                  {% else %}{{ p.hazard_type }}{% endif %}
+                </td>
+                <td>
+                  {% if p.hazard_type == 'POLLUTION' %}
+                    AQI {{ p.prediction }}
+                  {% else %}
+                    {{ p.probability }}% likelihood
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="badge {% if p.risk_level == 'CRITICAL' %}badge-critical{% elif p.risk_level == 'HIGH' %}badge-high{% elif p.risk_level == 'MEDIUM' %}badge-warning{% else %}badge-safe{% endif %}">
+                    {% if p.risk_level == 'CRITICAL' %}Act now
+                    {% elif p.risk_level == 'HIGH' %}Take precautions
+                    {% elif p.risk_level == 'MEDIUM' %}Keep an eye on it
+                    {% else %}All clear{% endif %}
+                  </span>
+                </td>
+                <td style="font-size: 12px; color: var(--text-muted);">{{ p.timestamp|slice:":16" }}</td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="5">
+                  <div class="empty-state">
+                    <div class="empty-state-icon">🔍</div>
+                    <div class="empty-state-title">No risk checks run yet</div>
+                    <div class="empty-state-text">Run a new risk check from the sidebar or click 'Check a risk'.</div>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  let allStationAreas = [];
+  let currentFilter = 'ALL';
+  let metChartInstance = null;
+  let aqiChartInstance = null;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadDashboardData();
+    // Auto-refresh every 60 seconds
+    setInterval(loadDashboardData, 60000);
+  });
+
+  function updateTimestampDisplay() {
+    const timeElem = document.getElementById('updateTimeText');
+    if (timeElem) {
+      timeElem.textContent = `Updated ${getFormattedCurrentTime()}`;
+    }
+  }
+
+  function loadDashboardData() {
+    updateTimestampDisplay();
+
+    // 1. Fetch live station telemetry for Area Cards & Urgency Sorting
+    fetch('/api/map-locations/')
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success' && data.locations) {
+          allStationAreas = data.locations;
+          renderUrgencyCards();
+          updateStatusHeroAndSplit(allStationAreas);
+        }
+      })
+      .catch(err => {
+        console.error("Could not refresh stations:", err);
+        showCardsError();
+      });
+
+    // 2. Fetch Chart Data
+    fetch('/api/dashboard-charts/')
+      .then(res => res.json())
+      .then(chartData => {
+        renderDashboardCharts(chartData);
+      })
+      .catch(err => console.error("Could not refresh charts:", err));
+  }
+
+  // Map severity to sort order & label
+  function getUrgencyRank(status) {
+    if (status === 'Critical') return 4;
+    if (status === 'High Risk' || status === 'High') return 3;
+    if (status === 'Warning' || status === 'Medium') return 2;
+    return 1; // Safe / Low
+  }
+
+  function getPlainRiskLabel(status) {
+    if (status === 'Critical') return 'Act now';
+    if (status === 'High Risk' || status === 'High') return 'Take precautions';
+    if (status === 'Warning' || status === 'Medium') return 'Keep an eye on it';
+    return 'All clear';
+  }
+
+  function getPlainRiskClass(status) {
+    if (status === 'Critical') return 'critical';
+    if (status === 'High Risk' || status === 'High') return 'high';
+    if (status === 'Warning' || status === 'Medium') return 'warning';
+    return 'safe';
+  }
+
+  function updateStatusHeroAndSplit(locations) {
+    let counts = { critical: 0, high: 0, warning: 0, safe: 0 };
+
+    locations.forEach(loc => {
+      const cat = loc.status_category;
+      if (cat === 'Critical') counts.critical++;
+      else if (cat === 'High Risk' || cat === 'High') counts.high++;
+      else if (cat === 'Warning' || cat === 'Medium') counts.warning++;
+      else counts.safe++;
+    });
+
+    const total = locations.length || 1;
+    const pCritical = (counts.critical / total) * 100;
+    const pHigh = (counts.high / total) * 100;
+    const pWarning = (counts.warning / total) * 100;
+    const pSafe = (counts.safe / total) * 100;
+
+    // Update Split Bar
+    document.getElementById('segCritical').style.width = `${pCritical}%`;
+    document.getElementById('segHigh').style.width = `${pHigh}%`;
+    document.getElementById('segWarning').style.width = `${pWarning}%`;
+    document.getElementById('segSafe').style.width = `${pSafe}%`;
+
+    document.getElementById('labelCritical').textContent = `Act now (${counts.critical})`;
+    document.getElementById('labelHigh').textContent = `Take precautions (${counts.high})`;
+    document.getElementById('labelWarning').textContent = `Keep an eye on it (${counts.warning})`;
+    document.getElementById('labelSafe').textContent = `All clear (${counts.safe})`;
+
+    // Hero coloring
+    const hero = document.getElementById('statusHero');
+    const heroSentence = document.getElementById('statusHeroSentence');
+    const heroSub = document.getElementById('statusHeroSub');
+
+    hero.classList.remove('critical', 'high', 'warning', 'safe');
+
+    const totalNeedingAttention = counts.critical + counts.high + counts.warning;
+
+    if (counts.critical > 0) {
+      hero.classList.add('critical');
+      heroSentence.textContent = `${counts.critical} ${counts.critical === 1 ? 'area requires' : 'areas require'} immediate action`;
+      heroSub.textContent = 'Critical threshold exceeded for water level, fire weather, or air quality.';
+    } else if (counts.high > 0) {
+      hero.classList.add('high');
+      heroSentence.textContent = `${counts.high} ${counts.high === 1 ? 'area needs' : 'areas need'} precautions`;
+      heroSub.textContent = 'Conditions are elevated above standard safety benchmarks.';
+    } else if (counts.warning > 0) {
+      hero.classList.add('warning');
+      heroSentence.textContent = `${counts.warning} ${counts.warning === 1 ? 'area has' : 'areas have'} a weather warning`;
+      heroSub.textContent = 'Keep an eye on these areas as conditions evolve.';
+    } else {
+      hero.classList.add('safe');
+      heroSentence.textContent = 'All clear across your monitored areas';
+      heroSub.textContent = 'All river basins, forest reserves, and urban zones are within normal baseline ranges.';
+    }
+  }
+
+  function renderUrgencyCards() {
+    const container = document.getElementById('areaCardsContainer');
+    if (!container) return;
+
+    let list = [...allStationAreas];
+
+    // Filter by hazard domain
+    if (currentFilter === 'FLOOD') {
+      list = list.filter(l => l.flood_risk === 'HIGH' || l.flood_risk === 'CRITICAL' || l.water_level >= 4.0 || l.rainfall > 30);
+    } else if (currentFilter === 'FIRE') {
+      list = list.filter(l => l.fire_risk === 'HIGH' || l.fire_risk === 'CRITICAL' || l.temperature >= 32);
+    } else if (currentFilter === 'AIR') {
+      list = list.filter(l => l.pollution_risk === 'HIGH' || l.pollution_risk === 'CRITICAL' || l.aqi >= 80);
+    }
+
+    // Sort by urgency: Critical first (4), then High (3), Warning (2), Safe (1)
+    list.sort((a, b) => getUrgencyRank(b.status_category) - getUrgencyRank(a.status_category));
+
+    if (list.length === 0) {
+      container.innerHTML = `
+        <div class="card" style="grid-column: 1 / -1; padding: 36px 20px;">
+          <div class="empty-state">
+            <div class="empty-state-icon">🍃</div>
+            <div class="empty-state-title">No areas match this filter</div>
+            <div class="empty-state-text">No stations currently exceed thresholds for this hazard type.</div>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = list.map(loc => {
+      const riskClass = getPlainRiskClass(loc.status_category);
+      const riskLabel = getPlainRiskLabel(loc.status_category);
+
+      return `
+        <div class="area-card ${riskClass}">
+          <div class="area-card-header">
+            <div>
+              <div class="area-card-name">${loc.name}</div>
+              <div class="area-card-district">${loc.district || 'Station'}</div>
+            </div>
+            <span class="badge badge-${riskClass}">
+              ${riskLabel}
+            </span>
+          </div>
+
+          <div class="area-metrics-grid">
+            <div class="area-metric-item">
+              <span class="area-metric-label">Water</span>
+              <span class="area-metric-val">${loc.water_level} m</span>
+            </div>
+            <div class="area-metric-item">
+              <span class="area-metric-label">Temp</span>
+              <span class="area-metric-val">${loc.temperature}°C</span>
+            </div>
+            <div class="area-metric-item">
+              <span class="area-metric-label">Air (AQI)</span>
+              <span class="area-metric-val">${loc.aqi}</span>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-muted);">
+            <span>Rain: ${loc.rainfall} mm</span>
+            <a href="/map/" style="color: var(--risk-green-text); font-weight: 600;">View on map →</a>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function filterAreas(filterType, btn) {
+    currentFilter = filterType;
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    renderUrgencyCards();
+  }
+
+  function showCardsError() {
+    const container = document.getElementById('areaCardsContainer');
+    if (container && allStationAreas.length === 0) {
+      container.innerHTML = `
+        <div class="card" style="grid-column: 1 / -1; padding: 36px 20px;">
+          <div class="empty-state">
+            <div class="empty-state-icon">📡</div>
+            <div class="empty-state-title">Unable to reach telemetry service</div>
+            <div class="empty-state-text">Check your network connection. Retrying automatically in 60 seconds.</div>
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  function renderDashboardCharts(data) {
+    if (!data || !data.time_series) return;
+    const labels = data.time_series.labels;
+
+    // 1. Meteorological Trends
+    const ctxMet = document.getElementById('metTrendChart');
+    if (ctxMet) {
+      if (metChartInstance) metChartInstance.destroy();
+      metChartInstance = new Chart(ctxMet, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Temperature (°C)',
+              data: data.time_series.temperatures,
+              borderColor: '#2e9e6b',
+              backgroundColor: 'rgba(46, 158, 107, 0.08)',
+              tension: 0.3,
+              fill: true,
+              yAxisID: 'y'
+            },
+            {
+              label: 'Rainfall (mm)',
+              data: data.time_series.rainfalls,
+              borderColor: '#1d7bb8',
+              backgroundColor: 'rgba(29, 123, 184, 0.2)',
+              type: 'bar',
+              yAxisID: 'y1'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { position: 'top' } },
+          scales: {
+            y: { type: 'linear', position: 'left', title: { display: true, text: 'Temp (°C)' } },
+            y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Rain (mm)' } }
+          }
+        }
+      });
+    }
+
+    // 2. AQI Trend
+    const ctxAqi = document.getElementById('aqiTrendChart');
+    if (ctxAqi) {
+      if (aqiChartInstance) aqiChartInstance.destroy();
+      aqiChartInstance = new Chart(ctxAqi, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Air Quality Index',
+            data: data.time_series.aqis,
+            borderColor: '#e8691e',
+            backgroundColor: 'rgba(232, 105, 30, 0.1)',
+            fill: true,
+            tension: 0.3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'top' } },
+          scales: {
+            y: { title: { display: true, text: 'AQI' }, beginAtZero: true }
+          }
+        }
+      });
+    }
+  }
+</script>
+{% endblock %}

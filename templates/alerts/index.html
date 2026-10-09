@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+
+{% block title %}Warnings{% endblock %}
+{% block page_title %}Warnings & emergency advisories{% endblock %}
+
+{% block content %}
+<div style="display: flex; flex-direction: column; gap: 24px;">
+
+  <!-- Summary Cards -->
+  <div class="grid-3">
+    <div class="metric-card">
+      <div class="metric-info">
+        <span class="metric-label">Active warnings</span>
+        <span class="metric-value" style="color: var(--risk-red);">{{ total_active }}</span>
+        <span class="metric-sub">Require ongoing attention</span>
+      </div>
+      <div class="metric-icon-wrap icon-rose">⚠️</div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-info">
+        <span class="metric-label">Immediate action needed</span>
+        <span class="metric-value" style="color: var(--risk-red);">{{ total_critical }}</span>
+        <span class="metric-sub">Critical hazard thresholds exceeded</span>
+      </div>
+      <div class="metric-icon-wrap icon-amber">🚨</div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-info">
+        <span class="metric-label">Resolved warnings</span>
+        <span class="metric-value" style="color: var(--risk-green);">{{ total_resolved }}</span>
+        <span class="metric-sub">Conditions returned to normal</span>
+      </div>
+      <div class="metric-icon-wrap icon-emerald">✓</div>
+    </div>
+  </div>
+
+  <!-- Filter Controls -->
+  <div class="card" style="padding: 18px 20px;">
+    <form method="GET" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;">
+      
+      <div style="flex: 1; min-width: 140px;">
+        <label class="form-label" style="font-size: 12px;">Status</label>
+        <select name="status" class="form-select">
+          <option value="ALL">All statuses</option>
+          <option value="ACTIVE" {% if status_filter == 'ACTIVE' %}selected{% endif %}>Active</option>
+          <option value="ACKNOWLEDGED" {% if status_filter == 'ACKNOWLEDGED' %}selected{% endif %}>Acknowledged</option>
+          <option value="RESOLVED" {% if status_filter == 'RESOLVED' %}selected{% endif %}>Resolved</option>
+        </select>
+      </div>
+
+      <div style="flex: 1; min-width: 140px;">
+        <label class="form-label" style="font-size: 12px;">Urgency</label>
+        <select name="severity" class="form-select">
+          <option value="ALL">All levels</option>
+          <option value="CRITICAL" {% if severity_filter == 'CRITICAL' %}selected{% endif %}>Act now (Critical)</option>
+          <option value="HIGH" {% if severity_filter == 'HIGH' %}selected{% endif %}>Take precautions (High)</option>
+          <option value="MEDIUM" {% if severity_filter == 'MEDIUM' %}selected{% endif %}>Keep an eye on it (Medium)</option>
+          <option value="LOW" {% if severity_filter == 'LOW' %}selected{% endif %}>All clear (Low)</option>
+        </select>
+      </div>
+
+      <div style="flex: 1; min-width: 140px;">
+        <label class="form-label" style="font-size: 12px;">Hazard type</label>
+        <select name="type" class="form-select">
+          <option value="ALL">All hazards</option>
+          <option value="FLOOD" {% if type_filter == 'FLOOD' %}selected{% endif %}>Flood</option>
+          <option value="FOREST_FIRE" {% if type_filter == 'FOREST_FIRE' %}selected{% endif %}>Fire</option>
+          <option value="AIR_POLLUTION" {% if type_filter == 'AIR_POLLUTION' %}selected{% endif %}>Air quality</option>
+        </select>
+      </div>
+
+      <div style="flex: 1; min-width: 150px;">
+        <label class="form-label" style="font-size: 12px;">Area</label>
+        <select name="location" class="form-select">
+          <option value="ALL">All areas</option>
+          {% for loc in locations %}
+          <option value="{{ loc.location_name }}" {% if location_filter == loc.location_name %}selected{% endif %}>
+            {{ loc.location_name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="display: flex; gap: 8px;">
+        <button type="submit" class="btn btn-primary" style="height: 38px;">Apply filters</button>
+        <a href="/alerts/" class="btn btn-secondary" style="height: 38px;">Reset</a>
+      </div>
+    </form>
+  </div>
+
+  <!-- Warnings Table -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">Warning feed ({{ alerts|length }})</h3>
+        <p style="font-size: 13px; color: var(--text-muted);">Advisories generated from station sensor thresholds</p>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Hazard</th>
+            <th>Area</th>
+            <th>Urgency</th>
+            <th>Advisory message</th>
+            <th>Time</th>
+            <th>Status</th>
+            {% if is_admin %}<th style="text-align: right;">Actions</th>{% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in alerts %}
+          <tr>
+            <td>
+              <strong>
+                {% if a.alert_type == 'FLOOD' %}🌊 Flood
+                {% elif a.alert_type == 'FOREST_FIRE' %}🔥 Fire
+                {% elif a.alert_type == 'AIR_POLLUTION' %}🌫️ Air quality
+                {% else %}{{ a.alert_type }}{% endif %}
+              </strong>
+            </td>
+            <td><strong>{{ a.location }}</strong></td>
+            <td>
+              <span class="badge {% if a.severity == 'CRITICAL' %}badge-critical{% elif a.severity == 'HIGH' %}badge-high{% elif a.severity == 'MEDIUM' %}badge-warning{% else %}badge-safe{% endif %}">
+                {% if a.severity == 'CRITICAL' %}Act now
+                {% elif a.severity == 'HIGH' %}Take precautions
+                {% elif a.severity == 'MEDIUM' %}Keep an eye on it
+                {% else %}All clear{% endif %}
+              </span>
+            </td>
+            <td style="max-width: 360px; font-size: 13.5px; color: var(--text-primary);">{{ a.message }}</td>
+            <td style="font-size: 12px; color: var(--text-muted);">{{ a.timestamp|slice:":16" }}</td>
+            <td>
+              <span class="badge {% if a.status == 'ACTIVE' %}badge-active{% elif a.status == 'ACKNOWLEDGED' %}badge-acknowledged{% else %}badge-resolved{% endif %}">
+                {% if a.status == 'ACTIVE' %}Active
+                {% elif a.status == 'ACKNOWLEDGED' %}Acknowledged
+                {% else %}Resolved{% endif %}
+              </span>
+            </td>
+            {% if is_admin %}
+            <td style="text-align: right;">
+              <div style="display: inline-flex; gap: 6px;">
+                {% if a.status != 'ACKNOWLEDGED' and a.status != 'RESOLVED' %}
+                <form method="POST" action="/alerts/{{ a.id }}/status/">
+                  {% csrf_token %}
+                  <input type="hidden" name="status" value="ACKNOWLEDGED">
+                  <button type="submit" class="btn btn-secondary btn-sm">
+                    Acknowledge warning
+                  </button>
+                </form>
+                {% endif %}
+
+                {% if a.status != 'RESOLVED' %}
+                <form method="POST" action="/alerts/{{ a.id }}/status/">
+                  {% csrf_token %}
+                  <input type="hidden" name="status" value="RESOLVED">
+                  <button type="submit" class="btn btn-primary btn-sm">
+                    Mark resolved ✓
+                  </button>
+                </form>
+                {% endif %}
+              </div>
+            </td>
+            {% endif %}
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="{% if is_admin %}7{% else %}6{% endif %}">
+              <div class="empty-state">
+                <div class="empty-state-icon">✅</div>
+                <div class="empty-state-title">No warnings match your filter</div>
+                <div class="empty-state-text">All monitored environmental conditions in this scope are nominal.</div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

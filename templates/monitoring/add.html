@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block title %}Add reading{% endblock %}
+{% block page_title %}Record sensor reading (Admin){% endblock %}
+
+{% block content %}
+<div style="max-width: 860px; margin: 0 auto;">
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">New station reading</h3>
+        <p style="font-size: 13px; color: var(--text-muted);">Enter new telemetry values to update station status</p>
+      </div>
+    </div>
+
+    <form method="POST">
+      {% csrf_token %}
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label" for="location">Station area *</label>
+          <select id="location" name="location" class="form-select" required>
+            {% for loc in locations %}
+            <option value="{{ loc.location_name }}">{{ loc.location_name }} ({{ loc.district_city }})</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group" style="display: flex; align-items: flex-end; padding-bottom: 8px;">
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 13.5px; cursor: pointer; color: var(--text-secondary);">
+            <input type="checkbox" name="is_demo" checked style="accent-color: var(--risk-green);"> Tag as sample data
+          </label>
+        </div>
+      </div>
+
+      <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin: 14px 0 8px 0;">
+        Hydrological & meteorological values
+      </div>
+      <div class="grid-4">
+        <div class="form-group">
+          <label class="form-label" for="temperature">Temperature (°C) *</label>
+          <input type="number" step="0.1" id="temperature" name="temperature" class="form-control" value="28.5" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="humidity">Humidity (%) *</label>
+          <input type="number" step="0.1" id="humidity" name="humidity" class="form-control" value="65.0" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="rainfall">Rainfall (mm) *</label>
+          <input type="number" step="0.1" id="rainfall" name="rainfall" class="form-control" value="25.0" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="water_level">Water level (m) *</label>
+          <input type="number" step="0.1" id="water_level" name="water_level" class="form-control" value="3.5" required>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label" for="wind_speed">Wind speed (km/h) *</label>
+          <input type="number" step="0.1" id="wind_speed" name="wind_speed" class="form-control" value="14.0" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="smoke_level">Vegetation dryness code (0-100) *</label>
+          <input type="number" step="0.1" id="smoke_level" name="smoke_level" class="form-control" value="60.0" required>
+        </div>
+      </div>
+
+      <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin: 14px 0 8px 0;">
+        Air quality & pollutant concentrations
+      </div>
+      <div class="grid-3">
+        <div class="form-group">
+          <label class="form-label" for="pm25">PM2.5 (µg/m³) *</label>
+          <input type="number" step="0.1" id="pm25" name="pm25" class="form-control" value="45.0" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="pm10">PM10 (µg/m³) *</label>
+          <input type="number" step="0.1" id="pm10" name="pm10" class="form-control" value="85.0" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="co">CO (mg/m³) *</label>
+          <input type="number" step="0.01" id="co" name="co" class="form-control" value="0.9" required>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label" for="no2">NO2 (µg/m³) *</label>
+          <input type="number" step="0.1" id="no2" name="no2" class="form-control" value="35.0" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="so2">SO2 (µg/m³) *</label>
+          <input type="number" step="0.1" id="so2" name="so2" class="form-control" value="18.0" required>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button type="submit" class="btn btn-primary" style="padding: 10px 24px;">
+          Save reading →
+        </button>
+        <a href="/monitoring/" class="btn btn-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+
+</div>
+{% endblock %}

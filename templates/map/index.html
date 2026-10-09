@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+
+{% block title %}Map{% endblock %}
+{% block page_title %}Environmental hazard map{% endblock %}
+
+{% block content %}
+<div style="display: flex; flex-direction: column; gap: 20px;">
+
+  <!-- Filter Bar & Plain Legend -->
+  <div class="card" style="padding: 14px 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+      
+      <!-- Hazard Filter Tabs -->
+      <div class="map-filter-bar" style="margin-bottom: 0;">
+        <button class="map-filter-btn active" data-filter="ALL" onclick="filterMapMarkers('ALL', this)">
+          All stations ({{ locations|length }})
+        </button>
+        <button class="map-filter-btn" data-filter="FLOOD" onclick="filterMapMarkers('FLOOD', this)">
+          🌊 Flood watch
+        </button>
+        <button class="map-filter-btn" data-filter="FOREST_FIRE" onclick="filterMapMarkers('FOREST_FIRE', this)">
+          🔥 Fire danger
+        </button>
+        <button class="map-filter-btn" data-filter="POLLUTION" onclick="filterMapMarkers('POLLUTION', this)">
+          🌫️ Air quality
+        </button>
+      </div>
+
+      <!-- Plain Risk Legend -->
+      <div style="display: flex; gap: 14px; align-items: center; font-size: 12.5px; font-weight: 600; flex-wrap: wrap;">
+        <span style="display: flex; align-items: center; gap: 6px;">
+          <span style="width: 10px; height: 10px; border-radius: 50%; background: var(--risk-green);"></span> All clear
+        </span>
+        <span style="display: flex; align-items: center; gap: 6px;">
+          <span style="width: 10px; height: 10px; border-radius: 50%; background: var(--risk-amber);"></span> Keep an eye on it
+        </span>
+        <span style="display: flex; align-items: center; gap: 6px;">
+          <span style="width: 10px; height: 10px; border-radius: 50%; background: var(--risk-orange);"></span> Take precautions
+        </span>
+        <span style="display: flex; align-items: center; gap: 6px;">
+          <span style="width: 10px; height: 10px; border-radius: 50%; background: var(--risk-red);"></span> Act now
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaflet Map Container -->
+  <div class="card" style="padding: 8px;">
+    <div id="environmental-map"></div>
+  </div>
+
+  <!-- Station Cards Grid Below Map -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">Station telemetry overview</h3>
+        <p style="font-size: 13px; color: var(--text-muted);">Click any station card to center the map camera</p>
+      </div>
+    </div>
+
+    <div class="grid-4" id="stationsGrid" style="gap: 12px;">
+      <!-- Populated dynamically via JS -->
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  let map;
+  let allMarkers = [];
+  let stationData = [];
+
+  document.addEventListener('DOMContentLoaded', function () {
+    // 1. Initialize Leaflet Map centered on India (default coverage area)
+    map = L.map('environmental-map').setView([20.5937, 78.9629], 5);
+
+    // 2. Add OpenStreetMap Tile Layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '© <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    // 3. Load Station GeoJSON from API
+    fetch('/api/map-locations/')
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success' && data.locations) {
+          stationData = data.locations;
+          renderMarkers(stationData);
+          renderStationCards(stationData);
+        }
+      })
+      .catch(err => console.error("Error loading stations for map:", err));
+  });
+
+  function getMarkerIcon(status) {
+    let pinClass = 'pin-safe';
+    let iconChar = '✓';
+
+    if (status === 'Critical') {
+      pinClass = 'pin-critical';
+      iconChar = '!';
+    } else if (status === 'High Risk' || status === 'High') {
+      pinClass = 'pin-high';
+      iconChar = '▲';
+    } else if (status === 'Warning' || status === 'Medium') {
+      pinClass = 'pin-warning';
+      iconChar = '•';
+    }
+
+    return L.divIcon({
+      className: 'custom-leaflet-pin',
+      html: `<div class="hazard-pin ${pinClass}">${iconChar}</div>`,
+      iconSize: [26, 26],
+      iconAnchor: [13, 13],
+      popupAnchor: [0, -13]
+    });
+  }
+
+  function getPlainStatusText(category) {
+    if (category === 'Critical') return 'Act now';
+    if (category === 'High Risk' || category === 'High') return 'Take precautions';
+    if (category === 'Warning' || category === 'Medium') return 'Keep an eye on it';
+    return 'All clear';
+  }
+
+  function getPlainStatusClass(category) {
+    if (category === 'Critical') return 'critical';
+    if (category === 'High Risk' || category === 'High') return 'high';
+    if (category === 'Warning' || category === 'Medium') return 'warning';
+    return 'safe';
+  }
+
+  function renderMarkers(locations) {
+    // Clear previous markers
+    allMarkers.forEach(m => map.removeLayer(m));
+    allMarkers = [];
+
+    locations.forEach(loc => {
+      const icon = getMarkerIcon(loc.status_category);
+      const marker = L.marker([loc.lat, loc.lon], { icon: icon });
+
+      const plainStatus = getPlainStatusText(loc.status_category);
+      const plainClass = getPlainStatusClass(loc.status_category);
+
+      const popupHtml = `
+        <div style="font-family: 'Source Sans 3', sans-serif; min-width: 230px; padding: 4px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <div style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 15px; font-weight: 700; color: #152922;">
+              ${loc.name}
+            </div>
+            <span class="badge badge-${plainClass}" style="font-size: 11px;">
+              ${plainStatus}
+            </span>
+          </div>
+          <div style="font-size: 12px; color: #698278; margin-bottom: 8px;">
+            ${loc.district} • ${loc.type}
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 12px; margin-bottom: 8px; background: #edf1ef; padding: 8px; border-radius: 6px;">
+            <div><strong>Water:</strong> ${loc.water_level} m</div>
+            <div><strong>Temp:</strong> ${loc.temperature}°C</div>
+            <div><strong>Rain:</strong> ${loc.rainfall} mm</div>
+            <div><strong>Air (AQI):</strong> ${loc.aqi}</div>
+          </div>
+
+          <div style="font-size: 11px; color: #698278; border-top: 1px solid #e2e8e5; padding-top: 4px;">
+            Last updated: ${loc.last_updated}
+          </div>
+        </div>
+      `;
+
+      marker.bindPopup(popupHtml);
+      marker.locData = loc;
+      marker.addTo(map);
+      allMarkers.push(marker);
+    });
+  }
+
+  function renderStationCards(locations) {
+    const grid = document.getElementById('stationsGrid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    locations.forEach(loc => {
+      const plainClass = getPlainStatusClass(loc.status_category);
+      const plainLabel = getPlainStatusText(loc.status_category);
+
+      const card = document.createElement('div');
+      card.className = 'metric-card';
+      card.style.cursor = 'pointer';
+      card.onclick = () => {
+        map.flyTo([loc.lat, loc.lon], 10, { duration: 1.2 });
+        const targetMarker = allMarkers.find(m => m.locData.id === loc.id);
+        if (targetMarker) targetMarker.openPopup();
+      };
+
+      card.innerHTML = `
+        <div class="metric-info">
+          <span class="metric-label">${loc.type}</span>
+          <span style="font-size: 14px; font-weight: 700; color: var(--text-primary);">${loc.name}</span>
+          <span class="metric-sub">${loc.district}</span>
+        </div>
+        <span class="badge badge-${plainClass}">
+          ${plainLabel}
+        </span>
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  function filterMapMarkers(filterType, btn) {
+    document.querySelectorAll('.map-filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    let filtered = stationData;
+    if (filterType === 'FLOOD') {
+      filtered = stationData.filter(l => l.flood_risk === 'HIGH' || l.flood_risk === 'CRITICAL' || l.water_level >= 4.5);
+    } else if (filterType === 'FOREST_FIRE') {
+      filtered = stationData.filter(l => l.fire_risk === 'HIGH' || l.fire_risk === 'CRITICAL' || l.temperature >= 32.0);
+    } else if (filterType === 'POLLUTION') {
+      filtered = stationData.filter(l => l.pollution_risk === 'HIGH' || l.pollution_risk === 'CRITICAL' || l.aqi >= 80);
+    }
+
+    renderMarkers(filtered);
+    renderStationCards(filtered);
+  }
+</script>
+{% endblock %}

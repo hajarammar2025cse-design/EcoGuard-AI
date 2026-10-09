@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}User accounts{% endblock %}
+{% block page_title %}User accounts management (Admin){% endblock %}
+
+{% block content %}
+<div style="display: flex; flex-direction: column; gap: 24px;">
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">Registered accounts ({{ users|length }})</h3>
+        <p style="font-size: 13px; color: var(--text-muted);">Manage authorization roles and user access</p>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Status</th>
+            <th>Registered</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+          <tr>
+            <td>
+              <strong style="color: var(--text-primary);">{{ u.username }}</strong>
+              {% if u.id == current_user.id %}
+                <span class="badge badge-demo" style="margin-left: 6px;">You</span>
+              {% endif %}
+            </td>
+            <td>{{ u.email }}</td>
+            <td>
+              <span class="badge {% if u.role == 'ADMIN' %}badge-high{% else %}badge-safe{% endif %}">
+                {% if u.role == 'ADMIN' %}Administrator{% else %}Field officer{% endif %}
+              </span>
+            </td>
+            <td>
+              {% if u.is_active %}
+                <span class="badge badge-safe">Active</span>
+              {% else %}
+                <span class="badge badge-warning">Disabled</span>
+              {% endif %}
+            </td>
+            <td style="font-size: 12px; color: var(--text-muted);">{{ u.created_at|default:"N/A" }}</td>
+            <td style="text-align: right;">
+              {% if u.id != current_user.id %}
+              <div style="display: inline-flex; gap: 6px;">
+                <!-- Toggle Role -->
+                <form method="POST" action="/accounts/users/{{ u.id }}/toggle-role/">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-secondary btn-sm" title="Switch role">
+                    Make {% if u.role == 'ADMIN' %}officer{% else %}administrator{% endif %}
+                  </button>
+                </form>
+
+                <!-- Toggle Active Status -->
+                <form method="POST" action="/accounts/users/{{ u.id }}/toggle-status/">
+                  {% csrf_token %}
+                  <button type="submit" class="btn {% if u.is_active %}btn-danger{% else %}btn-primary{% endif %} btn-sm">
+                    {% if u.is_active %}Disable account{% else %}Activate account{% endif %}
+                  </button>
+                </form>
+              </div>
+              {% else %}
+                <span style="font-size: 12px; color: var(--text-muted);">Your account</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

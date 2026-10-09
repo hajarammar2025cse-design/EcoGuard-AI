@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+
+{% block title %}Sensor stations{% endblock %}
+{% block page_title %}Sensor stations registry (Admin){% endblock %}
+
+{% block content %}
+<div style="display: flex; flex-direction: column; gap: 24px;">
+
+  {% if is_admin %}
+  <!-- Register New Station Form -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">Register new station</h3>
+        <p style="font-size: 13px; color: var(--text-muted);">Add a monitored physical location with GPS coordinates</p>
+      </div>
+    </div>
+
+    <form method="POST" action="/locations/add/">
+      {% csrf_token %}
+      <div class="grid-3">
+        <div class="form-group">
+          <label class="form-label" for="location_name">Station name *</label>
+          <input type="text" id="location_name" name="location_name" class="form-control" placeholder="e.g. Kaveri River Outflow" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="district_city">District / Region *</label>
+          <input type="text" id="district_city" name="district_city" class="form-control" placeholder="e.g. Mysore, Karnataka" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="type">Terrain classification *</label>
+          <select id="type" name="type" class="form-select" required>
+            <option value="RIVER_BASIN">River Basin</option>
+            <option value="FOREST">Forest / Reserve</option>
+            <option value="URBAN">Urban Area</option>
+            <option value="COASTAL">Coastal Zone</option>
+            <option value="INDUSTRIAL">Industrial Belt</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div class="form-group">
+          <label class="form-label" for="latitude">Latitude (Decimal) *</label>
+          <input type="number" step="0.0001" id="latitude" name="latitude" class="form-control" placeholder="e.g. 12.2958" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="longitude">Longitude (Decimal) *</label>
+          <input type="number" step="0.0001" id="longitude" name="longitude" class="form-control" placeholder="e.g. 76.6394" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="status">Operational status</label>
+          <select id="status" name="status" class="form-select">
+            <option value="ACTIVE" selected>Active (Online)</option>
+            <option value="INACTIVE">Inactive (Maintenance)</option>
+          </select>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="margin-top: 4px;">
+        Register station →
+      </button>
+    </form>
+  </div>
+  {% endif %}
+
+  <!-- Registered Stations Table -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">Registered stations ({{ locations|length }})</h3>
+        <p style="font-size: 13px; color: var(--text-muted);">Active GIS sensor stations</p>
+      </div>
+      <a href="/map/" class="btn btn-secondary btn-sm">View on live map</a>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Station name</th>
+            <th>District / Region</th>
+            <th>Latitude</th>
+            <th>Longitude</th>
+            <th>Terrain</th>
+            <th>Status</th>
+            {% if is_admin %}<th style="text-align: right;">Action</th>{% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for loc in locations %}
+          <tr>
+            <td>
+              <strong style="color: var(--text-primary);">{{ loc.location_name }}</strong>
+            </td>
+            <td>{{ loc.district_city }}</td>
+            <td><code style="font-size: 12px; color: var(--text-muted);">{{ loc.latitude }}</code></td>
+            <td><code style="font-size: 12px; color: var(--text-muted);">{{ loc.longitude }}</code></td>
+            <td>
+              <span class="badge badge-safe">
+                {{ loc.type }}
+              </span>
+            </td>
+            <td>
+              <span class="badge {% if loc.status == 'ACTIVE' %}badge-safe{% else %}badge-warning{% endif %}">
+                {{ loc.status }}
+              </span>
+            </td>
+            {% if is_admin %}
+            <td style="text-align: right;">
+              <form method="POST" action="/locations/{{ loc.id }}/delete/" onsubmit="return confirm('Remove station {{ loc.location_name }}?');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+              </form>
+            </td>
+            {% endif %}
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7">
+              <div class="empty-state">
+                <div class="empty-state-icon">📍</div>
+                <div class="empty-state-title">No stations registered</div>
+                <div class="empty-state-text">Use the form above to register your first environmental telemetry station.</div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

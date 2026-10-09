@@ -1,0 +1,415 @@
+{
+  "flood": {
+    "hazard": "Flood",
+    "dataset_name": "Rainfall and Flood Prediction in India",
+    "kaggle_url": "https://www.kaggle.com/datasets/rajanand/rainfall-in-india",
+    "author": "Raj Anand",
+    "total_samples": 115,
+    "train_samples": 86,
+    "test_samples": 29,
+    "features": [
+      "rainfall",
+      "water_level",
+      "temperature",
+      "humidity"
+    ],
+    "target": "flood (0=No Flood/Normal, 1=High Flood Risk)",
+    "selected_algorithm": "Random Forest",
+    "metrics": {
+      "accuracy": 0.9655,
+      "precision": 1.0,
+      "recall": 0.75,
+      "f1_score": 0.8571,
+      "confusion_matrix": [
+        [
+          25,
+          0
+        ],
+        [
+          1,
+          3
+        ]
+      ]
+    },
+    "all_algorithms_comparison": {
+      "Random Forest": {
+        "accuracy": 0.9655,
+        "precision": 1.0,
+        "recall": 0.75,
+        "f1_score": 0.8571,
+        "confusion_matrix": [
+          [
+            25,
+            0
+          ],
+          [
+            1,
+            3
+          ]
+        ]
+      },
+      "Gradient Boosting": {
+        "accuracy": 0.9655,
+        "precision": 1.0,
+        "recall": 0.75,
+        "f1_score": 0.8571,
+        "confusion_matrix": [
+          [
+            25,
+            0
+          ],
+          [
+            1,
+            3
+          ]
+        ]
+      },
+      "Logistic Regression": {
+        "accuracy": 0.9655,
+        "precision": 1.0,
+        "recall": 0.75,
+        "f1_score": 0.8571,
+        "confusion_matrix": [
+          [
+            25,
+            0
+          ],
+          [
+            1,
+            3
+          ]
+        ]
+      },
+      "Decision Tree": {
+        "accuracy": 0.9655,
+        "precision": 1.0,
+        "recall": 0.75,
+        "f1_score": 0.8571,
+        "confusion_matrix": [
+          [
+            25,
+            0
+          ],
+          [
+            1,
+            3
+          ]
+        ]
+      }
+    }
+  },
+  "fire": {
+    "hazard": "Forest Fire",
+    "dataset_name": "Algerian Forest Fires Dataset",
+    "kaggle_url": "https://www.kaggle.com/datasets/nitinchoudhary/algerian-forest-fires-dataset",
+    "author": "Nitin Choudhary / Faroudja Abid",
+    "total_samples": 243,
+    "train_samples": 182,
+    "test_samples": 61,
+    "features": [
+      "temperature",
+      "humidity",
+      "wind_speed",
+      "rainfall",
+      "smoke_level"
+    ],
+    "target": "Classes (0=Not Fire / Safe, 1=Fire Occurrence)",
+    "selected_algorithm": "Gradient Boosting",
+    "metrics": {
+      "accuracy": 0.9672,
+      "precision": 0.9444,
+      "recall": 1.0,
+      "f1_score": 0.9714,
+      "confusion_matrix": [
+        [
+          25,
+          2
+        ],
+        [
+          0,
+          34
+        ]
+      ]
+    },
+    "all_algorithms_comparison": {
+      "Random Forest": {
+        "accuracy": 0.9508,
+        "precision": 0.9429,
+        "recall": 0.9706,
+        "f1_score": 0.9565,
+        "confusion_matrix": [
+          [
+            25,
+            2
+          ],
+          [
+            1,
+            33
+          ]
+        ]
+      },
+      "Gradient Boosting": {
+        "accuracy": 0.9672,
+        "precision": 0.9444,
+        "recall": 1.0,
+        "f1_score": 0.9714,
+        "confusion_matrix": [
+          [
+            25,
+            2
+          ],
+          [
+            0,
+            34
+          ]
+        ]
+      },
+      "Logistic Regression": {
+        "accuracy": 0.9508,
+        "precision": 0.9429,
+        "recall": 0.9706,
+        "f1_score": 0.9565,
+        "confusion_matrix": [
+          [
+            25,
+            2
+          ],
+          [
+            1,
+            33
+          ]
+        ]
+      },
+      "Decision Tree": {
+        "accuracy": 0.9508,
+        "precision": 0.9189,
+        "recall": 1.0,
+        "f1_score": 0.9577,
+        "confusion_matrix": [
+          [
+            24,
+            3
+          ],
+          [
+            0,
+            34
+          ]
+        ]
+      }
+    }
+  },
+  "pollution": {
+    "hazard": "Air Pollution",
+    "dataset_name": "Air Quality Data in India (2015-2020)",
+    "kaggle_url": "https://www.kaggle.com/datasets/rohanrao/air-quality-data-in-india",
+    "author": "Rohan Rao / Central Pollution Control Board (CPCB)",
+    "total_samples": 12041,
+    "train_samples": 9632,
+    "test_samples": 2409,
+    "features": [
+      "pm25",
+      "pm10",
+      "co",
+      "no2",
+      "so2"
+    ],
+    "target": "AQI & Pollution Risk Level (LOW, MEDIUM, HIGH, CRITICAL)",
+    "selected_algorithm": "Random Forest",
+    "metrics": {
+      "accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "confusion_matrix": [
+        [
+          308,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          1221,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          638,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          242
+        ]
+      ],
+      "classes": [
+        "LOW",
+        "MEDIUM",
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    "regression_metrics": {
+      "r2_score": 1.0,
+      "mae": 0.0059
+    },
+    "all_algorithms_comparison": {
+      "Random Forest": {
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "confusion_matrix": [
+          [
+            308,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            1221,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            638,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            242
+          ]
+        ],
+        "classes": [
+          "LOW",
+          "MEDIUM",
+          "HIGH",
+          "CRITICAL"
+        ]
+      },
+      "Gradient Boosting": {
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "confusion_matrix": [
+          [
+            308,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            1221,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            638,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            242
+          ]
+        ],
+        "classes": [
+          "LOW",
+          "MEDIUM",
+          "HIGH",
+          "CRITICAL"
+        ]
+      },
+      "Decision Tree": {
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "confusion_matrix": [
+          [
+            308,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            1221,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            638,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            242
+          ]
+        ],
+        "classes": [
+          "LOW",
+          "MEDIUM",
+          "HIGH",
+          "CRITICAL"
+        ]
+      },
+      "Logistic Regression": {
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "confusion_matrix": [
+          [
+            308,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            1221,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            638,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            242
+          ]
+        ],
+        "classes": [
+          "LOW",
+          "MEDIUM",
+          "HIGH",
+          "CRITICAL"
+        ]
+      }
+    }
+  }
+}

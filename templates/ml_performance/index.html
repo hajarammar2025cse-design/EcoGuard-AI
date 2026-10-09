@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+
+{% block title %}Model verification{% endblock %}
+{% block page_title %}Model performance & evaluation (Admin){% endblock %}
+
+{% block content %}
+<div style="display: flex; flex-direction: column; gap: 24px;">
+
+  <!-- Admin Verification Banner -->
+  <div class="card" style="border-left: 4px solid var(--risk-green);">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+      <div>
+        <div style="font-size: 12px; font-weight: 700; color: var(--risk-green-text); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">
+          Verified evaluation benchmarks
+        </div>
+        <h2 style="font-size: 20px; color: var(--text-primary);">Trained model performance summary</h2>
+        <p style="color: var(--text-muted); font-size: 13.5px; margin-top: 4px; max-width: 680px;">
+          Performance metrics computed on hold-out validation splits across historical environmental hazard datasets.
+        </p>
+      </div>
+      <a href="/predictions/" class="btn btn-primary btn-sm">
+        Open risk console →
+      </a>
+    </div>
+  </div>
+
+  <!-- Models Evaluation Cards -->
+  {% for key, model in metadata.items %}
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <span class="badge badge-safe" style="margin-bottom: 6px;">
+          {% if key == 'flood' %}🌊 Flood hazard
+          {% elif key == 'fire' %}🔥 Forest fire hazard
+          {% else %}🌫️ Air quality{% endif %}
+        </span>
+        <h3 class="card-title" style="font-size: 18px;">{{ model.hazard }} model</h3>
+      </div>
+      <div style="text-align: right;">
+        <span style="font-size: 12px; color: var(--text-muted);">Selected algorithm:</span>
+        <div style="font-size: 15px; font-weight: 700; color: var(--text-primary);">{{ model.selected_algorithm }}</div>
+      </div>
+    </div>
+
+    <!-- Dataset Citation -->
+    <div style="background: var(--bg-surface); padding: 14px 16px; border-radius: var(--radius-xs); border: 1px solid var(--border-subtle); margin-bottom: 18px; font-size: 13px;">
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+        <div><strong>Dataset:</strong> {{ model.dataset_name }}</div>
+        <div><strong>Source:</strong> {{ model.author }}</div>
+        <div>
+          <strong>Reference:</strong>
+          <a href="{{ model.kaggle_url }}" target="_blank" style="color: var(--sky-blue); font-weight: 600;">View source ↗</a>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 8px; font-size: 12px; color: var(--text-muted);">
+        <div>Total samples: <strong>{{ model.total_samples }}</strong></div>
+        <div>Training split: <strong>{{ model.train_samples }}</strong></div>
+        <div>Validation split: <strong>{{ model.test_samples }}</strong></div>
+      </div>
+    </div>
+
+    <!-- Metric Scorecards -->
+    <div class="grid-4" style="margin-bottom: 20px;">
+      <div class="metric-card">
+        <div class="metric-info">
+          <span class="metric-label">Accuracy</span>
+          <span class="metric-value" style="color: var(--risk-green);">
+            {% widthratio model.metrics.accuracy 1 100 %}%
+          </span>
+          <span class="metric-sub">Score: {{ model.metrics.accuracy }}</span>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-info">
+          <span class="metric-label">Precision</span>
+          <span class="metric-value" style="color: var(--sky-blue);">
+            {{ model.metrics.precision }}
+          </span>
+          <span class="metric-sub">Predictive precision</span>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-info">
+          <span class="metric-label">Recall</span>
+          <span class="metric-value" style="color: var(--risk-amber);">
+            {{ model.metrics.recall }}
+          </span>
+          <span class="metric-sub">Hazard sensitivity</span>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-info">
+          <span class="metric-label">F1-Score</span>
+          <span class="metric-value" style="color: var(--text-primary);">
+            {{ model.metrics.f1_score }}
+          </span>
+          <span class="metric-sub">Harmonic mean</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Candidate Algorithms Comparative Table -->
+    <h4 style="font-size: 13.5px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary);">
+      Candidate algorithms benchmark
+    </h4>
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Algorithm</th>
+            <th>Accuracy</th>
+            <th>Precision</th>
+            <th>Recall</th>
+            <th>F1-Score</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for alg_name, metrics in model.all_algorithms_comparison.items %}
+          <tr {% if alg_name == model.selected_algorithm %}style="background: var(--bg-card-subtle); font-weight: 600;"{% endif %}>
+            <td>{{ alg_name }}</td>
+            <td>{{ metrics.accuracy }}</td>
+            <td>{{ metrics.precision }}</td>
+            <td>{{ metrics.recall }}</td>
+            <td>{{ metrics.f1_score }}</td>
+            <td>
+              {% if alg_name == model.selected_algorithm %}
+                <span class="badge badge-safe">Active model ✓</span>
+              {% else %}
+                <span class="badge badge-demo">Baseline</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Confusion Matrix -->
+    <div style="margin-top: 14px; padding: 10px 14px; background: var(--bg-surface); border-radius: var(--radius-xs); border: 1px solid var(--border-subtle); font-size: 12.5px; display: flex; align-items: center; gap: 10px;">
+      <strong>Confusion matrix:</strong>
+      <code style="background: var(--bg-card); padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border-subtle);">
+        {{ model.metrics.confusion_matrix }}
+      </code>
+    </div>
+
+  </div>
+  {% endfor %}
+
+</div>
+{% endblock %}
